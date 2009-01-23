@@ -110,6 +110,9 @@ make_shell(BuildRef, ProjectApps, ProjectRepoApps, Repo) ->
 %% @spec (BuildRef, AppDir, DirList) -> Paths
 %% @end
 %%--------------------------------------------------------------------
+send_paths(BuildRef, RepoDir, [{AppName, Vsn, _NDeps, _AppPath} | T]) ->
+  send_path(BuildRef, RepoDir, AppName, Vsn),
+  send_paths(BuildRef, RepoDir, T);
 send_paths(BuildRef, RepoDir, [{AppName, Vsn, _} | T]) ->
     send_path(BuildRef, RepoDir, AppName, Vsn),
     send_paths(BuildRef, RepoDir, T);
