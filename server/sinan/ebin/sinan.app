@@ -15,7 +15,7 @@
              sin_depends,
              sin_sig,
              sin_gen,
-	     sin_resolver,
+             sin_resolver,
              sin_skel,
              sin_config_parser,
              sin_group_leader,
