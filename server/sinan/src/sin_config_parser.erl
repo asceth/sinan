@@ -47,12 +47,14 @@
 %% @end
 %%--------------------------------------------------------------------
 parse_config_file(BuildFile) ->
-    case file:read_file(BuildFile) of
-        {ok, FileBin} ->
-            parse_config(binary_to_list(FileBin), 0, 0);
-        Else ->
-            Else
-    end.
+  case file:read_file(BuildFile) of
+    {ok, FileBin} ->
+      parse_config(binary_to_list(FileBin), 0, 0);
+    {error, enoent} ->
+      throw({error, io_lib:format("Could not find config file: ~p~n", BuildFile)});
+    Else ->
+      Else
+  end.
 
 
 %%--------------------------------------------------------------------
