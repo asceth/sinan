@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+# -*- sh -*-
+
+ERLWARE_DIR=/usr/local/erlware
+ERTS_VSN=`erl -noshell -eval "io:format(\"~s\n\", [erlang:system_info(version)]), halt(0)."`
+ROOT_DIR=`erl -noshell -eval "io:format(\"~s\n\", [code:root_dir()]), halt(0)."`
+LOG_DIR=`pwd`/working/logs
+
+
+# Select the appropriate version of make when on FreeBSD
+SYS=`uname -s`
+if [ "$SYS" == "FreeBSD" ]; then
+   MAKE=gmake
+else
+   MAKE=make
+fi
+
+# Helper function to compile an erlang app.
+# compile <appname> [<dep1> <dep2>]
+function compile()
+{
+    app=$1
+    deps=""
+    shift
+    for d in $*; do deps="$deps working/src/$d";done
+    echo -n "Compiling $app..."
+    ./compile working/src/$app $ERLWARE_DIR $deps 2>&1 >$LOG_DIR/$app.compile
+    echo "done."
+}
+
+# Helper function to copy applications from the erlang install
+function copy_core()
+{
+    app=$1
+    appdir=`erl -noshell -eval "io:format(\"~s\n\", [code:lib_dir($app)]), halt(0)."`
+    echo -n "Copying $app..."
+    cp -R $appdir $ERLWARE_DIR/packages/$ERTS_VSN/lib
+    echo "done."
+}
+
+# Helper function for silent pushd
+function pushdir()
+{
+    pushd $1 >/dev/null
+}
+
+# Helper function for silent popd
+function popdir()
+{
+    popd >/dev/null
+}
+
+
+# Bail if any script returns non-zero status
+set -o errexit
+
+# Wipe out previous work
+rm -rf working/erlware working/logs
+mkdir -p working/src working/logs
+
+# Step into src directory
+pushdir working/src
+
+
+# Get eunit
+if [ ! -d eunit ]; then
+    echo -n "Downloading eunit..."
+    svn export -r242 http://svn.process-one.net/contribs/trunk/eunit 2>&1 >$LOG_DIR/svn.eunit
+    {
+        # Ugh, eunit requires .beams to be compiled in particular order -- do a "pre-build" of eunit
+        pushdir eunit
+        $MAKE 2>&1 >>$LOG_DIR/svn.eunit
+        # Further ugliness -- the eunit build version is not OTP compliant -- fix it
+        cat src/eunit.app.src |sed -e 's;%VSN%;2.0;' >ebin/eunit.app
+        popdir
+    }
+    echo "done."
+fi
+
+# Get ktuo
+if [ ! -d ktuo ]; then
+    echo -n "Downloading ktuo..."
+    git clone git://git.erlware.org/ktuo.git ktuo 2>&1 >$LOG_DIR/git.ktuo.clone
+    rm -rf ktuo/.git
+    echo "done."
+fi
+
+# Get gtime
+if [ ! -d gtime ]; then
+    echo -n "Downloading gtime..."
+    wget http://repo.erlware.org/pub/5.6.3/Generic/lib/gtime/0.9.4/gtime.tar.gz >$LOG_DIR/wget.gtime 2>&1
+    tar -xzvf gtime.tar.gz >$LOG_DIR/tar.gtime 2>&1
+    mv gtime-0.9.4 gtime
+    rm gtime.tar.gz
+    echo "done."
+fi
+
+# Get uri
+if [ ! -d uri ]; then
+    echo -n "Downloading uri..."
+    git clone git://git.erlware.org/uri.git uri 2>&1 >$LOG_DIR/git.uri.clone
+    rm -rf uri/.git
+    echo "done."
+fi
+
+# Get crary
+if [ ! -d crary ]; then
+    echo -n "Downloading crary..."
+    git clone git://github.com/asceth/crary.git crary 2>&1 >$LOG_DIR/git.crary.clone
+    rm -rf crary/.git
+    echo "done."
+fi
+
+# Get fconf
+if [ ! -d fconf ]; then
+    echo -n "Downloading fconf..."
+    git clone git://git.erlware.org/fconf.git fconf 2>&1 >$LOG_DIR/git.fconf.clone
+    rm -rf fconf/.git
+    echo "done."
+fi
+
+# Get sgte
+if [ ! -d sgte ]; then
+    echo -n "Downloading sgte..."
+    git svn clone http://sgte.googlecode.com/svn/trunk/ sgte >$LOG_DIR/git.sgte.clone 2>&1
+    rm -rf sgte/.git
+    echo "done."
+fi
+
+# Get Sinan
+if [ ! -d sinan ]; then
+    echo -n "Downloading sinan..."
+    git clone git://git.erlware.org/sinan.git sinan_git 2>&1 >$LOG_DIR/git.sinan_git.clone
+    mv sinan_git/server/* .
+    # Update sinserv to use the latest erts
+    sed -i '' "s/ERTS_VSN=.*/ERTS_VSN=$ERTS_VSN/g" sinan_git/bin/sinserv
+    sed -i '' "s/REL_VSN=.*/REL_VSN=0.10.0.14/g" sinan_git/bin/sinserv
+    sed -i '' "s/REL_VSN=.*/REL_VSN=0.10.0.14/g" sinan_git/bin/sinan
+    echo "done."
+fi
+
+# Leave the working/src directory
+popdir
+
+
+# Now compile all the applications into erlware/packages/ERTS/lib
+compile eunit
+compile ktuo eunit
+compile gtime eunit
+compile uri eunit
+compile fconf eunit
+compile sgte eunit
+compile crary uri gtime eunit
+compile etask eunit
+compile sinan ktuo gtime uri fconf sgte crary ibrowse ewrepo ewlib etask eunit
+compile sinan_web_api uri gtime crary sinan eunit
+
+# Copy core dependencies into place
+copy_core asn1
+copy_core compiler
+copy_core kernel
+copy_core stdlib
+copy_core dialyzer
+copy_core edoc
+copy_core gs
+copy_core hipe
+copy_core mnesia
+copy_core parsetools
+copy_core sasl
+copy_core syntax_tools
+copy_core tools
+copy_core xmerl
+
+# Generate release file
+echo -n "Generating sinan release scripts..."
+./release working/erlware `find $ERLWARE_DIR/packages -name ebin -type d`
+echo "done."
+
+# Determine the sinan release id
+REL_DIR=`find working/erlware/release_packages -name "sinan-*" -type d`
+REL_ID=`basename $REL_DIR`
+
+echo -n "Copying sinan files to erlware..."
+# Copy sinan & sinserv binary scripts into place
+cp working/src/sinan_git/bin/* $ERLWARE_DIR/bin
+chmod u+x $ERLWARE_DIR/bin/*
+mkdir -p $REL_DIR/bin
+cp working/src/sinan_git/bin/* $REL_DIR/bin
+chmod u+x $REL_DIR/bin/*
+# Copy sinan client into place
+mkdir -p $REL_DIR/client
+cp -r working/src/sinan_git/client/* $REL_DIR/client
+# Copy sinan release into place
+cp -r working/erlware/release_packages/* $ERLWARE_DIR/release_packages
+echo "done."
