@@ -396,7 +396,7 @@ resolve_tasks([], _Tid, Acc) ->
 get_deps([{_, TaskDesc}]) ->
     TaskDesc#task.deps;
 get_deps([]) ->
-    none.
+    [].
 
 
 %%--------------------------------------------------------------------
