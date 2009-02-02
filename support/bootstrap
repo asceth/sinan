@@ -130,12 +130,10 @@ fi
 # Get Sinan
 if [ ! -d sinan ]; then
     echo -n "Downloading sinan..."
-    git clone git://git.erlware.org/sinan.git sinan_git 2>&1 >$LOG_DIR/git.sinan_git.clone
+    git clone git://github.com/asceth/sinan.git sinan_git 2>&1 >$LOG_DIR/git.sinan_git.clone
     mv sinan_git/server/* .
     # Update sinserv to use the latest erts
     sed -i '' "s/ERTS_VSN=.*/ERTS_VSN=$ERTS_VSN/g" sinan_git/bin/sinserv
-    sed -i '' "s/REL_VSN=.*/REL_VSN=0.10.0.14/g" sinan_git/bin/sinserv
-    sed -i '' "s/REL_VSN=.*/REL_VSN=0.10.0.14/g" sinan_git/bin/sinan
     echo "done."
 fi
 
