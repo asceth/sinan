@@ -175,7 +175,7 @@ resolve_project_dependencies(_, _, [], Acc) ->
 already_resolved(Dep, [{Dep, _, _, _} | _]) ->
   true;
 already_resolved(Dep, [_ | Rest]) ->
-  io:format("Project Apps: ~s.", [Rest]),
+  io:format("Project Apps: ~p.", [Rest]),
   already_resolved(Dep,  Rest);
 already_resolved(_, []) ->
   false.
