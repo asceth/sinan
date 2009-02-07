@@ -90,7 +90,7 @@ depends(BuildRef) ->
   AllDeps = check_project_dependencies(Prefix,
                                        ErtsVersion,
                                        ProjectApps,
-                                       []),
+                                       ProjectApps),
   sin_build_config:store(BuildRef, "project.deps", AllDeps),
   sin_build_config:store(BuildRef, "project.repoapps", AllDeps),
   save_deps(BuildRef, AllDeps),
