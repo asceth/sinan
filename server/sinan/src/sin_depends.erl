@@ -117,9 +117,9 @@ get_application_env(Key) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%  Parse the app description into a format consumable by the
-%%  deps engine.
-%% @spec preformat_version_data(AppInfo, Acc) -> {Deps, Pkg, Vsns}
+%%  Check for per project dependencies
+%% @spec (Prefix, ErtsVersion, AppInfo, Acc) ->
+%%                              [{Deps, Vsn, NDeps, Location}]
 %% @end
 %%--------------------------------------------------------------------
 check_project_dependencies(Prefix,
@@ -171,14 +171,32 @@ resolve_project_dependencies(Prefix,
 resolve_project_dependencies(_, _, [], Acc) ->
   Acc.
 
-
 already_resolved(Dep, [{Dep, _, _, _} | _]) ->
   true;
 already_resolved(Dep, [_ | Rest]) ->
-  io:format("Project Apps: ~p.", [Rest]),
   already_resolved(Dep,  Rest);
 already_resolved(_, []) ->
   false.
+
+%%--------------------------------------------------------------------
+%% @doc
+%%  Get list of dependencies excluding project apps.
+%% @spec (ProjectApps, AllDeps) -> RepoApps
+%% @end
+%%--------------------------------------------------------------------
+get_repo_apps(ProjectApps, AllDeps) ->
+    get_repo_apps(ProjectApps, AllDeps, []).
+
+get_repo_apps(ProjectApps, [Dep | Deps], Acc) ->
+    case is_project_app(Dep, ProjectApps) of
+        true ->  get_repo_apps(ProjectApps, Deps, Acc);
+        false -> get_repo_apps(ProjectApps, Deps, [Dep | Acc])
+    end;
+get_repo_apps(_ProjectApps, [], Acc) ->
+    Acc.
+
+is_project_app({Name, _Deps, _Version, _Location}, ProjectApps) ->
+    lists:keymember(Name, 1, ProjectApps).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -228,7 +246,7 @@ save_repo_apps(BuildRef, BuildDir) ->
 %% @doc
 %%   Roll through the list of project apps and gather the app
 %%   name and version number.
-%% @spec (BuildRef) -> ListOfAppVsn
+%% @spec (BuildRef, AppBuildDir) -> ListOfAppVsn
 %% @end
 %% @private
 %%-------------------------------------------------------------------

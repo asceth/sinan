@@ -28,7 +28,7 @@
              sin_release_builder,
              sin_print_handler,
              sin_test,
-	     sin_analyze,
+             sin_analyze,
              sin_app,
              sin_sup,
              sin_help,
