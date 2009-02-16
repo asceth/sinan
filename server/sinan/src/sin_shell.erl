@@ -100,8 +100,8 @@ shell(BuildRef) ->
 make_shell(BuildRef, ProjectApps, ProjectRepoApps, Repo) ->
     BuildDir = sin_build_config:get_value(BuildRef, "build.dir"),
     AppDir = filename:join([BuildDir, "apps"]),
-    send_paths(BuildRef, AppDir, ProjectApps),
-    send_paths(BuildRef, Repo, ProjectRepoApps).
+    send_paths(BuildRef, ProjectApps),
+    send_paths(BuildRef, ProjectRepoApps).
 
 
 %%--------------------------------------------------------------------
@@ -110,16 +110,10 @@ make_shell(BuildRef, ProjectApps, ProjectRepoApps, Repo) ->
 %% @spec (BuildRef, AppDir, DirList) -> Paths
 %% @end
 %%--------------------------------------------------------------------
-send_paths(BuildRef, RepoDir, [{AppName, Vsn, _NDeps, _AppPath} | T]) ->
-  send_path(BuildRef, RepoDir, AppName, Vsn),
-  send_paths(BuildRef, RepoDir, T);
-send_paths(BuildRef, RepoDir, [{AppName, Vsn, _} | T]) ->
-    send_path(BuildRef, RepoDir, AppName, Vsn),
-    send_paths(BuildRef, RepoDir, T);
-send_paths(BuildRef, RepoDir, [{AppName, Vsn} | T]) ->
-    send_path(BuildRef, RepoDir, AppName, Vsn),
-    send_paths(BuildRef, RepoDir, T);
-send_paths(_, _, []) ->
+send_paths(BuildRef, [{AppName, _Vsn, _Deps, AppPath} | T]) ->
+  send_path(BuildRef, AppName, AppPath),
+  send_paths(BuildRef, T);
+send_paths(_, []) ->
     ok.
 
 %%--------------------------------------------------------------------
@@ -129,7 +123,7 @@ send_paths(_, _, []) ->
 %% @spec (BuildRef, RepoDir, AppName, Vsn) -> ok
 %% @end
 %%--------------------------------------------------------------------
-send_path(BuildRef, RepoDir, AppName, Vsn) ->
+send_path(BuildRef, AppName, AppPath) ->
     NAppName = case is_atom(AppName) of
                    true ->
                        atom_to_list(AppName);
@@ -137,8 +131,7 @@ send_path(BuildRef, RepoDir, AppName, Vsn) ->
                        AppName
                end,
     eta_event:task_event(BuildRef, ?TASK, app_name, NAppName),
-    DirName = lists:flatten([NAppName, "-", Vsn]),
-    Path = filename:join([RepoDir, DirName, "ebin"]),
+    Path = filename:join([AppPath, "ebin"]),
     eta_event:task_event(BuildRef, ?TASK, app_path, Path).
 
 %%====================================================================
