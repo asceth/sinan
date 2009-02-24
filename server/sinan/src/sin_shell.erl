@@ -97,9 +97,7 @@ shell(BuildRef) ->
 %% @spec (BuildRef, ProjectApps, ProjectRepoApps, Repo) -> ok
 %% @end
 %%--------------------------------------------------------------------
-make_shell(BuildRef, ProjectApps, ProjectRepoApps, Repo) ->
-    BuildDir = sin_build_config:get_value(BuildRef, "build.dir"),
-    AppDir = filename:join([BuildDir, "apps"]),
+make_shell(BuildRef, ProjectApps, ProjectRepoApps, _Repo) ->
     send_paths(BuildRef, ProjectApps),
     send_paths(BuildRef, ProjectRepoApps).
 
