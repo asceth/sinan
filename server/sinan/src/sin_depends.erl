@@ -137,6 +137,13 @@ check_project_dependencies(_,
                            Acc) ->
   Acc.
 
+merge_deps(App, [App | _], All) ->
+    All;
+merge_deps(App,  [_ | Rest], All) ->
+    merge_deps(App, Rest, All);
+merge_deps(App, [], All) ->
+    [App | All].
+
 resolve_project_dependencies(Prefix,
                              ErtsVersion,
                              [Dep | Deps], Acc) ->
